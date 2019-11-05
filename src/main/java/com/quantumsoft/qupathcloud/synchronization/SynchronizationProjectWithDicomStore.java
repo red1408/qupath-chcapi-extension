@@ -140,14 +140,14 @@ public class SynchronizationProjectWithDicomStore {
 
     List<Path> tempDirectories = new ArrayList<>();
     for (ProjectImageEntry<BufferedImage> currentEntry : imageList) {
-      String serverPath = currentEntry.getServerPath();
+      String serverPath = currentEntry.getImageName();
       String imageExtension = FilenameUtils.getExtension(serverPath);
       String imageName = FilenameUtils.getBaseName(serverPath);
 
       if (!imageExtension.equals(METADATA_FILE_EXTENSION)) {
         URI uri;
         try {
-          uri = new URI(serverPath);
+          uri = new URI("file://" + currentEntry.getEntryPath() + "/" + serverPath);
         } catch (URISyntaxException e) {
           throw new QuPathCloudException(e);
         }
@@ -179,7 +179,7 @@ public class SynchronizationProjectWithDicomStore {
         Future<Void> future = executorService.submit(callable);
         futureList.add(future);
 
-        project.removeImage(currentEntry);
+        project.removeImage(currentEntry, true);
       }
     }
     for (Future<Void> future : futureList) {
@@ -253,7 +253,11 @@ public class SynchronizationProjectWithDicomStore {
       stubImageServer.setDisplayedImageName(imageName);
       stubImageServer.setPath(serverPath);
 
-      project.addImage(stubImageServer);
+      try {
+        project.addImage(stubImageServer.getBuilder());
+      } catch (IOException e) {
+        throw new QuPathCloudException(e);
+      }
 
       seriesListInProject.add(series);
     }
@@ -407,13 +411,13 @@ public class SynchronizationProjectWithDicomStore {
       String imageName = currentEntry.getImageName();
 
       if (Files.notExists(pathToCurrentEntry)) {
-        String serverPath = currentEntry.getServerPath();
+        String serverPath = currentEntry.getImageName();
         StubImageServer stubImageServer = new StubImageServer();
         stubImageServer.setDisplayedImageName(imageName);
         stubImageServer.setPath(serverPath);
 
         ImageData<BufferedImage> imageData = qupath.createNewImageData(stubImageServer);
-        ProjectImageEntry<BufferedImage> entry = project.getImageEntry(serverPath);
+        ProjectImageEntry<BufferedImage> entry = project.getEntry(imageData);
         try {
           entry.saveImageData(imageData);
         } catch (IOException e) {
