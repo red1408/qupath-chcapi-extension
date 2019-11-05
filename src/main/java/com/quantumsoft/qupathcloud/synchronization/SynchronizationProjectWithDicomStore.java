@@ -61,7 +61,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import qupath.lib.gui.QuPathGUI;
-import qupath.lib.gui.helpers.DisplayHelpers;
+import qupath.lib.gui.dialogs.Dialogs;
 import qupath.lib.images.ImageData;
 import qupath.lib.projects.Project;
 import qupath.lib.projects.ProjectImageEntry;
@@ -115,7 +115,7 @@ public class SynchronizationProjectWithDicomStore {
         project.syncChanges();
       } catch (QuPathCloudException | IOException e) {
         LOGGER.error("Synchronization error: ", e);
-        DisplayHelpers.showErrorMessage("Synchronization error!", e);
+        Dialogs.showErrorMessage("Synchronization error!", e);
       } finally {
         Platform.runLater(() -> {
           qupath.refreshProject();
