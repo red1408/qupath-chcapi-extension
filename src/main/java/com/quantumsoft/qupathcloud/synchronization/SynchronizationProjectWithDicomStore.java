@@ -31,7 +31,10 @@ import com.quantumsoft.qupathcloud.entities.instance.Instance;
 import com.quantumsoft.qupathcloud.exception.QuPathCloudException;
 import com.quantumsoft.qupathcloud.gui.windows.ConflictsWindow;
 import com.quantumsoft.qupathcloud.gui.windows.SynchronizationWindow;
+import com.quantumsoft.qupathcloud.imageserver.CloudImageServerBuilder;
 import com.quantumsoft.qupathcloud.imageserver.StubImageServer;
+import com.quantumsoft.qupathcloud.pyramid.LoadPyramidFileCallable;
+import com.quantumsoft.qupathcloud.pyramid.Pyramid;
 import com.quantumsoft.qupathcloud.repository.Repository;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -63,6 +66,8 @@ import org.apache.logging.log4j.Logger;
 import qupath.lib.gui.QuPathGUI;
 import qupath.lib.gui.dialogs.Dialogs;
 import qupath.lib.images.ImageData;
+import qupath.lib.images.servers.ImageServerBuilder.DefaultImageServerBuilder;
+import qupath.lib.images.servers.ImageServerBuilder.ServerBuilder;
 import qupath.lib.projects.Project;
 import qupath.lib.projects.ProjectImageEntry;
 
@@ -140,23 +145,22 @@ public class SynchronizationProjectWithDicomStore {
 
     List<Path> tempDirectories = new ArrayList<>();
     for (ProjectImageEntry<BufferedImage> currentEntry : imageList) {
-      String serverPath = currentEntry.getImageName();
-      String imageExtension = FilenameUtils.getExtension(serverPath);
-      String imageName = FilenameUtils.getBaseName(serverPath);
+      URI serverUri;
+      try {
+        serverUri = currentEntry.getServerURIs().iterator().next();
+      } catch (IOException e) {
+        throw new QuPathCloudException(e);
+      }
+
+      String imageExtension = FilenameUtils.getExtension(serverUri.toString());
+      String imageName = FilenameUtils.getBaseName(serverUri.toString());
 
       if (!imageExtension.equals(METADATA_FILE_EXTENSION)) {
-        URI uri;
-        try {
-          uri = new URI("file://" + currentEntry.getEntryPath() + "/" + serverPath);
-        } catch (URISyntaxException e) {
-          throw new QuPathCloudException(e);
-        }
-
         Path tempDirectory = createTempDirectory("QuPath-");
         tempDirectory.toFile().deleteOnExit();
         tempDirectories.add(tempDirectory);
 
-        Path pathToImage = Paths.get(uri);
+        Path pathToImage = Paths.get(serverUri);
         ImageToWsiDcmConverter converter = new ImageToWsiDcmConverter(pathToImage, tempDirectory);
         String checkedFileName = checkFileName(remoteImageSeriesList, imageName);
         converter.convertImageToWsiDcm(checkedFileName);
@@ -168,7 +172,7 @@ public class SynchronizationProjectWithDicomStore {
           throw new QuPathCloudException(e);
         }
         if (dicomizedFiles.size() == 0) {
-          String errorParam = MessageFormat.format("Dicomization failed for: {0}", serverPath);
+          String errorParam = MessageFormat.format("Dicomization failed for: {0}", serverUri);
           throw new QuPathCloudException(errorParam);
         }
         queryBuilder.setPaths(dicomizedFiles);
@@ -249,13 +253,13 @@ public class SynchronizationProjectWithDicomStore {
       Path metadataImageFile = metadataConfiguration.saveMetadataFile(series, instances);
       String serverPath = metadataImageFile.toString();
 
-      StubImageServer stubImageServer = new StubImageServer();
-      stubImageServer.setDisplayedImageName(imageName);
-      stubImageServer.setPath(serverPath);
-
       try {
-        project.addImage(stubImageServer.getBuilder());
-      } catch (IOException e) {
+        Pyramid pyramid = new LoadPyramidFileCallable(metadataImageFile, true).call();
+        ServerBuilder sb = DefaultImageServerBuilder.createInstance(CloudImageServerBuilder.class,
+            pyramid.getMetadata(), new URI("file://" + serverPath));
+
+        project.addImage(sb);
+      } catch (IOException | URISyntaxException e) {
         throw new QuPathCloudException(e);
       }
 
@@ -351,6 +355,7 @@ public class SynchronizationProjectWithDicomStore {
     List<ProjectImageEntry<BufferedImage>> imageList = qupath.getProject().getImageList();
     List<Pair<ProjectImageEntry<BufferedImage>, Date>> localDataFileInfos = new ArrayList<>();
     for (ProjectImageEntry<BufferedImage> currentEntry : imageList) {
+      // TODO
       Path pathToCurrentEntry = currentEntry.getEntryPath();
       Path pathToCurrentQpdataFile = pathToCurrentEntry.resolve(QU_PATH_DATA_FILE);
       if (Files.exists(pathToCurrentQpdataFile)) {

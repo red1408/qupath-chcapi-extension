@@ -89,21 +89,13 @@ public class CloudImageServer extends AbstractImageServer<BufferedImage> {
     this.dicomStore = dicomStore;
     this.executorService = Executors.newFixedThreadPool(THREADS_COUNT);
 
-    pyramid = new LoadPyramidFileCallable(Paths.get(uri)).call();
+    pyramid = new LoadPyramidFileCallable(Paths.get(uri), false).call();
 
-    originalMetadata = new ImageServerMetadata.Builder()
-        .height(pyramid.getHeight())
-        .width(pyramid.getWidth())
-        .channels(ImageChannel.getDefaultRGBChannels())
-        .preferredTileSize(pyramid.getTileWidth(), pyramid.getTileHeight())
-        .levelsFromDownsamples(pyramid.getDownsamples())
-        .rgb(true)
-        .build();
+    originalMetadata = pyramid.getMetadata();
   }
 
   @Override
   protected ServerBuilder<BufferedImage> createServerBuilder() {
-    // TODO do I need to pass args?
     return DefaultImageServerBuilder
         .createInstance(CloudImageServerBuilder.class, getMetadata(), uri);
   }

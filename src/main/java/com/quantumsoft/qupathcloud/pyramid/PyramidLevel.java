@@ -51,8 +51,6 @@ public class PyramidLevel {
     this.tileWidth = instance.getColumns().getValue1();
     this.tileHeight = instance.getRows().getValue1();
     this.isFullTiled = instance.isFullTiled();
-
-    addInstance(instance);
   }
 
   /**
