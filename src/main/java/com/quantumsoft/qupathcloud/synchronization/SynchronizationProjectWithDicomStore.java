@@ -255,10 +255,13 @@ public class SynchronizationProjectWithDicomStore {
 
       try {
         Pyramid pyramid = new LoadPyramidFileCallable(metadataImageFile, true).call();
-        ServerBuilder sb = DefaultImageServerBuilder.createInstance(CloudImageServerBuilder.class,
-            pyramid.getMetadata(), new URI("file://" + serverPath));
+        ServerBuilder<BufferedImage> sb = DefaultImageServerBuilder.createInstance(
+            CloudImageServerBuilder.class,
+            pyramid.getMetadata(),
+            new URI("file://" + serverPath));
 
-        project.addImage(sb);
+        ProjectImageEntry<BufferedImage> entry = project.addImage(sb);
+        entry.setImageName(imageName);
       } catch (IOException | URISyntaxException e) {
         throw new QuPathCloudException(e);
       }
