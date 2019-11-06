@@ -45,7 +45,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import qupath.lib.awt.common.AwtTools;
 import qupath.lib.images.servers.AbstractImageServer;
-import qupath.lib.images.servers.ImageChannel;
 import qupath.lib.images.servers.ImageServerBuilder.DefaultImageServerBuilder;
 import qupath.lib.images.servers.ImageServerBuilder.ServerBuilder;
 import qupath.lib.images.servers.ImageServerMetadata;
@@ -102,7 +101,7 @@ public class CloudImageServer extends AbstractImageServer<BufferedImage> {
 
   @Override
   public Collection<URI> getURIs() {
-    return null;
+    return Collections.singletonList(uri);
   }
 
   @Override
