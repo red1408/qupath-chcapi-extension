@@ -358,7 +358,6 @@ public class SynchronizationProjectWithDicomStore {
     List<ProjectImageEntry<BufferedImage>> imageList = qupath.getProject().getImageList();
     List<Pair<ProjectImageEntry<BufferedImage>, Date>> localDataFileInfos = new ArrayList<>();
     for (ProjectImageEntry<BufferedImage> currentEntry : imageList) {
-      // TODO
       Path pathToCurrentEntry = currentEntry.getEntryPath();
       Path pathToCurrentQpdataFile = pathToCurrentEntry.resolve(QU_PATH_DATA_FILE);
       if (Files.exists(pathToCurrentQpdataFile)) {
@@ -417,22 +416,6 @@ public class SynchronizationProjectWithDicomStore {
     for (ProjectImageEntry<BufferedImage> currentEntry : imageList) {
       Path pathToCurrentEntry = currentEntry.getEntryPath();
       String imageName = currentEntry.getImageName();
-
-      if (Files.notExists(pathToCurrentEntry)) {
-        String serverPath = currentEntry.getImageName();
-        StubImageServer stubImageServer = new StubImageServer();
-        stubImageServer.setDisplayedImageName(imageName);
-        stubImageServer.setPath(serverPath);
-
-        ImageData<BufferedImage> imageData = qupath.createNewImageData(stubImageServer);
-        ProjectImageEntry<BufferedImage> entry = project.getEntry(imageData);
-        try {
-          entry.saveImageData(imageData);
-        } catch (IOException e) {
-          throw new QuPathCloudException(e);
-        }
-      }
-
       imageDirectories.put(imageName, pathToCurrentEntry);
     }
 
@@ -451,6 +434,11 @@ public class SynchronizationProjectWithDicomStore {
       String imageName = instance.getSopAuthorizationComment().getValue1();
       Path imageDirectory = imageDirectories.get(imageName);
       Path qpdataFile = imageDirectory.resolve(QU_PATH_DATA_FILE);
+      try {
+        Files.createDirectories(imageDirectory);
+      } catch (IOException e) {
+        throw new QuPathCloudException(e);
+      }
       DcmToDataConverter dcmToDataConverter =
           new DcmToDataConverter(downloadedQpdataInstance, qpdataFile);
       dcmToDataConverter.convertDcmToQuPathData();
